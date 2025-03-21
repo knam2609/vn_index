@@ -19,7 +19,6 @@ dist/
 # Ignore configuration files with sensitive data
 .env
 
-# Ignore data files
-*.csv
-*.xlsx
-!*/
+# Ignore data files (files only)
+**/*.csv
+**/*.xlsx
