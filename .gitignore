@@ -1,0 +1,24 @@
+# Ignore Python compiled files
+*.py[cod]
+__pycache__/
+
+# Ignore virtual environment directories
+env/
+venv/
+
+# Ignore log files
+*.log
+
+# Ignore OS generated files
+.DS_Store
+
+# Ignore build directories
+build/
+dist/
+
+# Ignore configuration files with sensitive data
+.env
+
+# Ignore data files
+*.csv
+*.xlsx
