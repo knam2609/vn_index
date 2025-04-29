@@ -22,3 +22,7 @@ dist/
 # Ignore data files (files only)
 **/*.csv
 **/*.xlsx
+
+# Ignore image files (files only)
+**/*.png
+**/*.jpg
