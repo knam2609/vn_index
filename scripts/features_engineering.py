@@ -3,6 +3,7 @@
 # =============================================================================
 import pandas as pd
 import numpy as np
+from statsmodels.tsa.seasonal import STL
 
 
 def compute_RSI(series, window=14):
@@ -98,17 +99,14 @@ def quicky_data(df):
     if 'Index' in df.columns:
         df.drop(columns=['Index'], inplace=True)
 
-    # ---- date embeddings ----
-    # day of week: 0 = Monday, … 6 = Sunday
-    dow = df.index.dayofweek
-    df['dow_sin'] = np.sin(2 * np.pi * dow / 7)
-    df['dow_cos'] = np.cos(2 * np.pi * dow / 7)
-    
-    # month: 1 = Jan, … 12 = Dec
-    mth = df.index.month - 1  # shift to 0–11
-    df['month_sin'] = np.sin(2 * np.pi * mth / 12)
-    df['month_cos'] = np.cos(2 * np.pi * mth / 12)
-    
+    # ---- decomposition ----
+    series = df.iloc[:,0]
+    stl = STL(series, period=252, robust=True)
+    res = stl.fit()
+    df['trend'] = res.trend
+    df['seasonal'] = res.seasonal
+    df['residual'] = res.resid
+
     return df
 
 def select_features_by_correlation(df, target_col="VN_Index_Close", train_ratio=0.9, corr_threshold=0.05):

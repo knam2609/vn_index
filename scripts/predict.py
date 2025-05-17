@@ -31,7 +31,7 @@ def future_change_prediction(X_test, data, pred_close, scaler, model, num_days=1
 
     # 1) predict next‑day % change (scaled)
     with torch.no_grad():
-            pred_scaled = model(X_test).unsqueeze(0)
+            pred_scaled = model(X_test.unsqueeze(0))
 
     print(pred_scaled.shape)         
     # inverse‐scale
@@ -99,12 +99,12 @@ def future_price_prediction(X_test, data, y_pred, scaler, model, num_days=10):
         last_date  = next_date
 
     with torch.no_grad():
-            pred_scaled = model(X_test).unsqueeze(0)
+            pred_scaled = model(X_test.unsqueeze(0))
 
     print(pred_scaled.shape)         
     # inverse‐scale
     future_preds = inverse_scale_predictions(pred_scaled, scaler).detach().cpu().numpy().ravel()
-
+    print(future_preds)
     plt.figure(figsize=(12,6))
     plt.plot(future_dates, future_preds, marker='o', linestyle="dashed", color="red", label="Predicted VN-INDEX")
     plt.xlabel("Date")

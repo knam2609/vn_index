@@ -77,7 +77,7 @@ class CustomizedLoss(nn.Module):
 # -----------------------------
 def create_sequences(data, dates, train_seq_len=60, test_seq_len=10, target_col_idx=0):
     X, y, y_dates = [], [], []
-    for i in range(0, len(data) - train_seq_len - test_seq_len, test_seq_len):
+    for i in range(0, len(data) - train_seq_len - test_seq_len):
         X.append(data[i:i + train_seq_len])
         y.append(data[i + train_seq_len:i + train_seq_len + test_seq_len, target_col_idx])
         y_dates.append(dates[i + train_seq_len:i + train_seq_len + test_seq_len])

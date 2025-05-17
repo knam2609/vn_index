@@ -10,15 +10,16 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import optuna
 from .helper import create_sequences, inverse_scale_predictions, set_seed, device
-from .training_evaluation import train_model, evaluate_model, objective
+from .training_evaluation import train_model, objective
+# from .lit_trainer import train_model
 from .lstm import LSTMModel
 
 # -----------------------------
 # Main Pipeline Function
 # -----------------------------
 def change_model(data, df=None, scaler=StandardScaler(), model_type=LSTMModel, criterion=nn.HuberLoss(), train_seq_len=60, test_seq_len=5, tuning=False,
-                        best_params={"hidden_size": 128, "num_layers": 2,
-                                     "dropout": 0.3, "learning_rate": 1e-4, "batch_size": 8}):
+                        epochs=50, best_params={"hidden_size": 128, "num_layers": 2,
+                                     "dropout": 0.3, "learning_rate": 0.1, "batch_size": 32}):
     """
     Main LSTM pipeline.
       - 'data' is the DataFrame used for scaling and creating sequences.
@@ -54,18 +55,16 @@ def change_model(data, df=None, scaler=StandardScaler(), model_type=LSTMModel, c
     # Hyperparameter tuning or use fixed parameters.
     if tuning:
         study = optuna.create_study(direction="minimize")
-        study.optimize(lambda trial: objective(model_type, trial, X_train_tensor, y_train_tensor, X_tensor, y_test_tensor, criterion, scaler), n_trials=10)
+        study.optimize(lambda trial: objective(model_type, trial, X_train_tensor, y_train_tensor, X_tensor, y_test_tensor, criterion, epochs), n_trials=10)
         best_params = study.best_params
         print("Best Hyperparameters:", best_params)
-        print(f"Best Overall Average Training Loss: {study.best_value:.4f}")
+        train_loss = study.best_trial.user_attrs("train_loss")
+        print(f"Final: Training Loss: {train_loss:.4f} - Test Loss: {study.best_value:.4f}")
         model = study.best_trial.user_attrs["model"]
+        predicted_pct_tensor = study.best_trial.user_attrs["y_pred_tensor"]
     else:
-        model, overall_avg_loss = train_model(model_type, best_params, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, scaler, epochs=1)
-        print(f"Overall Average Training Loss: {overall_avg_loss:.4f}")
-
-    predicted_pct_tensor = model(X_test_tensor)
-    val_loss = evaluate_model(model, X_test_tensor, y_test_tensor, criterion, scaler)
-    print(f"Final Evaluation Loss on Test Set: {val_loss:.4f}")
+        model, train_loss, predicted_pct_tensor, test_loss = train_model(model_type, best_params, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, epochs)
+        print(f"Final: Training Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
 
     # Inverse-transform predicted and true percent changes.
     predicted_pct = inverse_scale_predictions(predicted_pct_tensor, scaler).detach().cpu().numpy().ravel()
@@ -124,14 +123,14 @@ def change_model(data, df=None, scaler=StandardScaler(), model_type=LSTMModel, c
     print("Predicted vs. Actual VN-INDEX (Test Set):")
     print(results_df)
 
-    final_model, _ = train_model(model_type, best_params, X_tensor, y_tensor, criterion, scaler, epochs=50)
+    # final_model, _, _, _ = train_model(model_type, best_params, X_tensor, y_tensor, criterion, scaler, epochs=50)
 
     data_for_prediction = np.array(data_scaled[-train_seq_len:])
-    return final_model, torch.tensor(data_for_prediction, dtype=torch.float32).to(device), scaler, pred_close
+    return model, torch.tensor(data_for_prediction, dtype=torch.float32).to(device), scaler, pred_close
 
 def price_model(data, scaler=StandardScaler(), model_type=LSTMModel, criterion=nn.HuberLoss(), train_seq_len=60, test_seq_len=5, 
-                tuning=True, best_params={'hidden_size': 128, 'num_layers': 2,
-    'dropout': 0.3, 'learning_rate': 1e-4, 'batch_size': 8}):
+                tuning=True, epochs=50, best_params={'hidden_size': 128, 'num_layers': 2,
+    'dropout': 0.3, 'learning_rate': 0.1, 'batch_size': 32}):
 
     if isinstance(data, pd.Series):
         data = data.to_frame()
@@ -156,19 +155,16 @@ def price_model(data, scaler=StandardScaler(), model_type=LSTMModel, criterion=n
 
     if tuning:
         study = optuna.create_study(direction='minimize')
-        study.optimize(lambda trial: objective(model_type, trial, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, scaler), n_trials=10)
+        study.optimize(lambda trial: objective(model_type, trial, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, epochs), n_trials=10)
         best_params = study.best_params
         print("Best Hyperparameters:", best_params)
-        print(f"Best Overall Average Training Loss: {study.best_value:.4f}")
+        train_loss = study.best_trial.user_attrs("train_loss")
+        print(f"Final: Training Loss: {train_loss:.4f} - Test Loss: {study.best_value:.4f}")
         model = study.best_trial.user_attrs["model"]
+        y_pred_tensor = study.best_trial.user_attrs["y_pred_tensor"]
     else:
-        model, overall_avg_loss = train_model(model_type, best_params, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, scaler, epochs=1)
-        print(f"Overall Average Training Loss: {overall_avg_loss:.4f}")
-
-    y_pred_tensor = model(X_test_tensor)
-    print(y_pred_tensor.shape)
-    val_loss = evaluate_model(model, X_test_tensor, y_test_tensor, criterion, scaler)
-    print(f"Final Evaluation Loss on Test Set: {val_loss:.4f}")
+        model, train_loss, y_pred_tensor, test_loss = train_model(model_type, best_params, X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor, criterion, epochs)
+        print(f"Final: Training Loss: {train_loss:.4f} - Test Loss: {test_loss:.4f}")
 
     y_pred = inverse_scale_predictions(y_pred_tensor, scaler).detach().cpu().numpy().ravel()
     y_true = inverse_scale_predictions(y_test_tensor, scaler).detach().cpu().numpy().ravel()
@@ -202,7 +198,7 @@ def price_model(data, scaler=StandardScaler(), model_type=LSTMModel, criterion=n
     print("Predicted vs. Actual VN-INDEX (Test Set):")
     print(results_df)
 
-    final_model, _ = train_model(model_type, best_params, X_tensor, y_tensor, None, None, criterion, scaler, epochs=1)
+    # final_model, _, _, _ = train_model(model_type, best_params, X_tensor, y_tensor, None, None, criterion, scaler, epochs=50)
 
     data_for_prediction = np.array(data_scaled[-train_seq_len:])
-    return final_model, torch.tensor(data_for_prediction, dtype=torch.float32).to(device), scaler, y_pred
+    return model, torch.tensor(data_for_prediction, dtype=torch.float32).to(device), scaler, y_pred
