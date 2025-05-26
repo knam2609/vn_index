@@ -26,3 +26,5 @@ dist/
 # Ignore image files (files only)
 **/*.png
 **/*.jpg
+
+draft.py

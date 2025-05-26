@@ -1,7 +1,0 @@
-batch_size: 32
-dropout: 0.3
-hidden_size: 128
-input_size: 4
-learning_rate: 0.1
-model_type: !!python/name:scripts.lstm.LSTMModel ''
-num_layers: 2
