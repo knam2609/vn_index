@@ -1,4 +1,3 @@
-
 # Vietnamese Market Indices Prediction Project
 This project focuses on forecasting Vietnam’s major stock indices—VN-Index and VN30—using a suite of deep learning models, including LSTM, Transformer, and NeuralProphet. 
 It combines historical market data with external financial indicators to train and evaluate both multi-step and multi-output forecasting architectures. 
