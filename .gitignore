@@ -21,6 +21,10 @@ dist/
 
 # Ignore data files (files only)
 **/*.csv
+
+# But do not ignore this specific one
+!ready_data/vn_index_data/cleaned_vn_index_data.csv
+
 **/*.xlsx
 
 # Ignore image files (files only)
