@@ -35,10 +35,12 @@ if st.session_state.update_trigger:
 @st.cache_data(ttl=3600)
 def load_data():
     cleaned_path = "ready_data/vn_index_data/cleaned_vn_index_data.csv"
-    if not os.path.exists(cleaned_path):
+    try:
+        return pd.read_csv(cleaned_path, parse_dates=["Date"])
+    except FileNotFoundError:
         subprocess.run(["python", "scripts/vn_index_scripts/scrape_vn_index.py"])
         subprocess.run(["python", "scripts/vn_index_scripts/vn_index_processing.py"])
-    return pd.read_csv(cleaned_path, parse_dates=["Date"])
+        return pd.read_csv(cleaned_path, parse_dates=["Date"])
 
 df = load_data()
 
