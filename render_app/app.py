@@ -19,8 +19,8 @@ test_days = st.slider("Number of Days to Test:", min_value=forecast_days, max_va
 # 🔄 Refresh & run scraping scripts if needed
 if st.button("🔄 Refresh Forecast"):
     with st.spinner("Scraping and processing new data..."):
-        subprocess.run(["python", "scripts/vn_index_scripts/scrape_vn_index.py"])
-        subprocess.run(["python", "scripts/vn_index_scripts/vn_index_processing.py"])
+        subprocess.run(["python", os.path.join("scripts", "vn_index_scripts", "scrape_vn_index.py")])
+        subprocess.run(["python", os.path.join("scripts", "vn_index_scripts", "vn_index_processing.py")])
         st.session_state.update_trigger = True
 
 # 🧠 Caching
@@ -34,13 +34,12 @@ if st.session_state.update_trigger:
 # 📦 Load processed data
 @st.cache_data(ttl=3600)
 def load_data():
-    cleaned_path = "ready_data/vn_index_data/cleaned_vn_index_data.csv"
-    try:
-        return pd.read_csv(cleaned_path, parse_dates=["Date"])
-    except FileNotFoundError:
-        subprocess.run(["python", "scripts/vn_index_scripts/scrape_vn_index.py"])
-        subprocess.run(["python", "scripts/vn_index_scripts/vn_index_processing.py"])
-        return pd.read_csv(cleaned_path, parse_dates=["Date"])
+    cleaned_path = os.path.join("ready_data", "vn_index_data", "cleaned_vn_index_data.csv")
+    if not os.path.exists(cleaned_path):
+        os.makedirs(os.path.dirname(cleaned_path), exist_ok=True)
+        subprocess.run(["python", os.path.join("scripts", "vn_index_scripts", "scrape_vn_index.py")])
+        subprocess.run(["python", os.path.join("scripts", "vn_index_scripts", "vn_index_processing.py")])
+    return pd.read_csv(cleaned_path, parse_dates=["Date"])
 
 df = load_data()
 
