@@ -1,14 +1,13 @@
-import streamlit as st
-import os
 import sys
+import os
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import subprocess
 from sklearn.preprocessing import StandardScaler
 
-# ✅ Add parent directory to Python path so Render can find 'scripts'
+# Include parent directory for imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from scripts.general_scripts.helper import CustomizedLoss
 from scripts.general_scripts.model_shorcut import test_predict
 
@@ -51,34 +50,39 @@ df = load_data()
 
 # 🔮 Run prediction
 try:
-    final_df, metrics_df, forecast_df = test_predict(
-        df=df,
-        n_tests=test_days,
-        n_forecasts=forecast_days,
-        seasonal_periods=261,
-        scaler=StandardScaler(),
-        model_type=model_choice,
-        criterion=CustomizedLoss(),
-        n_lags=5
-    )
+    with st.spinner("⏳ Running prediction..."):
+        final_df, metrics_df, forecast_df = test_predict(
+            df=df,
+            n_tests=test_days,
+            n_forecasts=forecast_days,
+            seasonal_periods=261,
+            scaler=StandardScaler(),
+            model_type=model_choice,
+            criterion=CustomizedLoss(),
+            n_lags=5
+        )
 
-    # 📊 Plot forecast
-    st.subheader("📊 Actual vs Predicted VN-Index")
-    fig, ax = plt.subplots()
-    ax.plot(forecast_df["Date"], forecast_df["Actual VN-INDEX"], label="Actual")
-    ax.plot(forecast_df["Date"], forecast_df["Predicted VN-INDEX"], label="Predicted")
-    ax.set_xlabel("Date")
-    ax.set_ylabel("VN-Index")
-    ax.legend()
-    st.pyplot(fig)
+    # 📋 Quick check of output
+    if forecast_df.empty or metrics_df.empty:
+        st.warning("⚠️ Forecast or metrics data is empty. Please try refreshing.")
+    else:
+        # 📊 Plot forecast
+        st.subheader("📊 Actual vs Predicted VN-Index")
+        fig, ax = plt.subplots()
+        ax.plot(forecast_df["Date"], forecast_df["Actual VN-INDEX"], label="Actual")
+        ax.plot(forecast_df["Date"], forecast_df["Predicted VN-INDEX"], label="Predicted")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("VN-Index")
+        ax.legend()
+        st.pyplot(fig)
 
-    # 📋 Metrics
-    st.subheader("📌 Model Performance")
-    st.dataframe(metrics_df)
+        # 📋 Metrics
+        st.subheader("📌 Model Performance")
+        st.dataframe(metrics_df)
 
-    # 📑 Forecast Table
-    st.subheader("🔍 Forecast Table")
-    st.dataframe(forecast_df.tail(10))
+        # 📑 Forecast Table
+        st.subheader("🔍 Forecast Table")
+        st.dataframe(forecast_df.tail(10))
 
 except Exception as e:
     st.error(f"⚠️ Forecasting failed: {e}")
