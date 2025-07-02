@@ -121,6 +121,7 @@ def test_predict(df, n_tests, n_forecasts, seasonal_periods, scaler, model_type,
             
             data = df_2[['residual', 'trend', 'seasonal', 'dow_sin', 'dow_cos', 'month_sin', 'month_cos']]
             
+            print(model_type)
             # 🚀 Train the model and get the test set
             model, X_test_tensor, scaler, y_pred = price_model(data, scaler, algo, criterion, tuning=False, train_seq_len=n_lags, test_seq_len=n_forecasts, seasonal_periods=seasonal_periods, epochs=50, verbose=False) # type: ignore
             result_df = future_price_prediction(X_test_tensor, data, y_pred, scaler, model, num_days=n_forecasts, seasonal_periods=seasonal_periods, verbose=False)

@@ -13,7 +13,6 @@ from .helper import create_sequences, inverse_scale_predictions, set_seed, devic
 from .training_evaluation import train_model, objective, evaluate_model
 from .lstm import LSTMModelMultiStep
 from statsmodels.tsa.holtwinters import Holt, ExponentialSmoothing
-from .features_engineering import quicky_data 
 
 # -----------------------------
 # Main Pipeline Function

@@ -23,6 +23,7 @@ dist/
 **/*.csv
 
 # But do not ignore this specific one
+!raw_data/vn_index_data/hose_historical_data.csv
 !ready_data/vn_index_data/cleaned_vn_index_data.csv
 
 **/*.xlsx

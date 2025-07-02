@@ -112,7 +112,8 @@ def train_model(model_type,
         # scheduler step
         scheduler.step(val_loss)
 
-        # logger.info(f"Epoch {epoch:02d} – Train Loss: {train_loss:.4f} – Val Loss: {val_loss:.4f}")
+        logger.info(f"Epoch {epoch:02d} – Train Loss: {train_loss:.4f} – Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch:02d} – Train Loss: {train_loss:.4f} – Val Loss: {val_loss:.4f}")
 
     return model, train_loss, val_loss
 
