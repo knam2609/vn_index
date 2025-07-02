@@ -50,7 +50,7 @@ try:
         st.dataframe(metrics_df)
 
         # 📑 Forecast Table
-        st.subheader("🔍 Forecast Table (Next Few Days)")
+        st.subheader("🔍 Forecast Table (Next 2 Days)")
         st.dataframe(forecast_df.tail(10))
 
 except FileNotFoundError:
