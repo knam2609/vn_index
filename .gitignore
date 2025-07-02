@@ -25,8 +25,8 @@ dist/
 # But do not ignore this specific one
 !raw_data/vn_index_data/hose_historical_data.csv
 !ready_data/vn_index_data/cleaned_vn_index_data.csv
-!forecast_result/*.csv
-
+!forecast_result/
+!forecast_result/**
 **/*.xlsx
 
 # Ignore image files (files only)
