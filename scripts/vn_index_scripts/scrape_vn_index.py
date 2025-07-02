@@ -4,20 +4,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 from datetime import datetime
+from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 options = Options()
-options.add_argument("--headless")
+options.add_argument("--headless=new")  # Required for CI/CD like GitHub Actions
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
-options.add_argument("--disable-infobars")
 options.add_argument("--disable-extensions")
+options.add_argument("--disable-infobars")
 options.add_argument("--window-size=1920,1080")
 
-
-# Set up Selenium WebDriver
-driver = webdriver.Chrome()  # Make sure chromedriver is in your PATH
+driver = webdriver.Chrome(options=options)
 driver.get("http://en.stockbiz.vn/IndicesStats.aspx#")
 
 # Wait for the page to load
