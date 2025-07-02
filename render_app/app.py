@@ -2,6 +2,7 @@ import os
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 # 🧭 Page setup
 st.set_page_config(page_title="VN-Index Forecasting", layout="wide")
@@ -34,6 +35,14 @@ try:
         ax.set_xlabel("Date")
         ax.set_ylabel("VN-Index")
         ax.legend()
+
+        # ✅ Tilt x-axis labels for better readability
+        plt.xticks(rotation=60, ha='right')
+        plt.tight_layout()
+
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))
+
         st.pyplot(fig)
 
         # 📋 Metrics
