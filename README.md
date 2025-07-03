@@ -38,4 +38,4 @@ Test set prediction charts
 
 Model comparison table
 
-🔗 View it live: vn-index.onrender.com
+🔗 View it live: https://vn-index.onrender.com
