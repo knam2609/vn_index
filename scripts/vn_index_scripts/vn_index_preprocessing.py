@@ -3,6 +3,16 @@ import pandas as pd
 # Load the data
 df = pd.read_csv('raw_data/vn_index_data/hose_historical_data.csv')
 
+def remove_outliers(df):
+    # Extract percentage from Change column and convert to decimal
+    df['Change'] = df[df.columns[1]].pct_change()  # Calculate percentage change
+    df = df.fillna(0)  # Fill NaN values with 0
+
+    # keep only rows where |Change| ≤ 0.03
+    df = df[df['Change'].abs() <= 0.03]
+    df.reset_index(drop=True, inplace=True)  # Reset index after filtering
+    return df
+
 def process_data(df):
     # Remove duplicates
     df.drop_duplicates(inplace=True)
@@ -51,4 +61,5 @@ def process_data(df):
 if __name__ == "__main__":
     # Load the data
     df = pd.read_csv('raw_data/vn_index_data/hose_historical_data.csv')
+    # df = remove_outliers(df)
     process_data(df)

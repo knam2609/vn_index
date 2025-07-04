@@ -68,14 +68,6 @@ def get_total_pages(driver):
     total_pages = int(total_pages_text.split()[0])  # Extract "299" and convert to int
     return total_pages
 
-def remove_outliers(df):
-    # Extract percentage from Change column and convert to decimal
-    df['Change'] = df['Change'].str.extract(r"\(([-+]?[\d.]+)%\)").astype(float) / 100
-
-    # keep only rows where |Change| ≤ 0.03
-    df = df[df['Change'].abs() <= 0.03]
-    return df
-
 
 def get_all_data(driver=driver):
     # Locate the hidden start date input field
@@ -220,12 +212,6 @@ def get_all_data(driver=driver):
     # Convert the data into a pandas DataFrame
     df = pd.DataFrame(all_data, columns=title_row)  # Use the title row as column headers
 
-    # # Add an index column
-    # df.reset_index(inplace=True)  # Add a sequential index column
-    # df.rename(columns={"index": "Index"}, inplace=True)  # Rename the index column to "Index"
-
-    # df = remove_outliers(df)
-
     # Save the data to a CSV file
     df.to_csv("raw_data/vn_index_data/hose_historical_data.csv", index=False)  # Do not use any column as the index
     print("Data saved to hose_historical_data.csv")
@@ -246,7 +232,6 @@ def get_latest_data(driver=driver):
     # Extract header and data
     title_row = first_page_data[0]
     first_page_df = pd.DataFrame(first_page_data[1:], columns=title_row)
-    first_page_df = remove_outliers(first_page_df)
 
     # Combine the new and existing data
     combined_df = pd.concat([first_page_df, df], ignore_index=True)

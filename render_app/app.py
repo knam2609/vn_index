@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 
 # 🧭 Page setup
 st.set_page_config(page_title="VN-Index Forecasting", layout="wide")
-st.title("📈 VN-Index Forecasting Dashboard (From Saved Forecasts)")
+st.title("📈 VN-Index Forecasting Dashboard")
 
 # ⚙️ User input
 model_choice = st.selectbox("Choose Forecasting Model:", ["LSTM", "Transformer", "NeuralProphet"])
@@ -16,6 +16,20 @@ BASE_DIR = "forecast_result/vn_index"
 forecast_path = os.path.join(BASE_DIR, f"forecast_{model_choice}.csv")
 metrics_path = os.path.join(BASE_DIR, f"metrics_{model_choice}.csv")
 final_path = os.path.join(BASE_DIR, f"final_{model_choice}.csv")
+
+def highlight_changes_with_base(s, base_value):
+    colors = []
+    prev = base_value
+    for val in s:
+        if val > prev:
+            colors.append('color: green')
+        elif val < prev:
+            colors.append('color: red')
+        else:
+            colors.append('')
+        prev = val
+    return colors
+
 
 # 📦 Load saved CSVs
 try:
@@ -49,9 +63,27 @@ try:
         st.subheader("📌 Model Performance")
         st.dataframe(metrics_df)
 
-        # 📑 Forecast Table
+        # 📑 Forecast Table (Next 2 Days)
         st.subheader("🔍 Forecast Table (Next 2 Days)")
-        st.dataframe(forecast_df.tail(10))
+
+        recent_forecast = forecast_df
+
+        # Ensure required column exists
+        target_col = 'Predicted VN-INDEX'
+        if target_col in recent_forecast.columns and 'Actual VN-INDEX' in final_df.columns:
+            # Get the last actual value from final_df
+            last_actual_value = final_df['Actual VN-INDEX'].iloc[-1]
+
+            # Apply conditional formatting using the last historical value as starting point
+            styled_df = recent_forecast.style.apply(
+                highlight_changes_with_base, 
+                base_value=last_actual_value,
+                subset=[target_col]
+            )
+            st.dataframe(styled_df, use_container_width=True)
+        else:
+            st.dataframe(recent_forecast, use_container_width=True)
+
 
 except FileNotFoundError:
     st.error(f"❌ Missing forecast, final, or metrics CSV for model: {model_choice}")
