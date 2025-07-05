@@ -69,7 +69,7 @@ try:
         recent_forecast = forecast_df
 
         # Ensure required column exists
-        target_col = 'Predicted VN-INDEX'
+        target_col = 'Future Predictions'
         if target_col in recent_forecast.columns and 'Actual VN-INDEX' in final_df.columns:
             # Get the last actual value from final_df
             last_actual_value = final_df['Actual VN-INDEX'].iloc[-1]
