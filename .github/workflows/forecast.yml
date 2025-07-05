@@ -6,6 +6,9 @@ on:
     - cron: "0 8 * * *"
   workflow_dispatch:  # Allows manual trigger
 
+permissions:
+  contents: write  # ← This is essential for git push to work
+
 jobs:
   forecast:
     runs-on: ubuntu-latest
