@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 options = Options()
 options.add_argument("--headless=new")  # Required for CI/CD like GitHub Actions
@@ -213,7 +214,7 @@ def get_all_data(driver=driver):
     df = pd.DataFrame(all_data, columns=title_row)  # Use the title row as column headers
 
     # Save the data to a CSV file
-    df.to_csv("raw_data/vn_index_data/hose_historical_data.csv", index=False)  # Do not use any column as the index
+    write_df_to_s3(df, "vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
     print("Data saved to hose_historical_data.csv")
 
     # Close the browser
@@ -224,7 +225,7 @@ def get_all_data(driver=driver):
 
 def get_latest_data(driver=driver):
     # Read existing CSV
-    df = pd.read_csv("raw_data/vn_index_data/hose_historical_data.csv")
+    df = read_csv_from_s3("vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
 
     # Scrape the first page
     first_page_data = scrape_current_page(is_first_page=True, driver=driver)
@@ -248,7 +249,7 @@ def get_latest_data(driver=driver):
     # combined_df.insert(0, 'Index', combined_df.index)
 
     # Save to CSV
-    combined_df.to_csv("raw_data/vn_index_data/hose_historical_data.csv", index=False)
+    write_df_to_s3(combined_df, "vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
     print("Data saved to hose_historical_data.csv")
 
     # Quit driver

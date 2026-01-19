@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 # Add parent directory for module imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -54,7 +55,7 @@ def main():
 
     # Load cleaned data
     data_path = os.path.join(INPUT_DIR, "cleaned_vn_index_data.csv")
-    df = pd.read_csv(data_path, parse_dates=["Date"])
+    df = read_csv_from_s3("vn-index", data_path)
 
     # Model list
     models = ["LSTM", "Transformer", "NeuralProphet"]
@@ -80,9 +81,9 @@ def main():
             final_path = os.path.join(OUTPUT_DIR, f"final_{model_name}.csv")
 
             # Save all outputs
-            forecast_df.to_csv(forecast_path, index=False)
-            metrics_df.to_csv(metrics_path, index=False)
-            final_df.to_csv(final_path, index=False)
+            write_df_to_s3(forecast_df, "vn-index", forecast_path)
+            write_df_to_s3(metrics_df, "vn-index", metrics_path)
+            write_df_to_s3(final_df, "vn-index", final_path)
 
             print(f"✅ Saved forecast to {forecast_path}")
             print(f"✅ Saved metrics to {metrics_path}")

@@ -10,3 +10,4 @@ optuna
 selenium
 yfinance
 plotly
+boto3

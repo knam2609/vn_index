@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 # 🧭 Page setup
 st.set_page_config(page_title="VN-Index Forecasting", layout="wide")
@@ -33,9 +34,9 @@ def highlight_changes_with_base(s, base_value):
 
 # 📦 Load saved CSVs
 try:
-    forecast_df = pd.read_csv(forecast_path, parse_dates=["Date"])
-    metrics_df = pd.read_csv(metrics_path)
-    final_df = pd.read_csv(final_path, parse_dates=["Date"])
+    forecast_df = read_csv_from_s3("vn-index", forecast_path)
+    metrics_df = read_csv_from_s3("vn-index", metrics_path)
+    final_df = read_csv_from_s3("vn-index", final_path)
 
     # ✅ Check loaded data
     if final_df.empty or forecast_df.empty or metrics_df.empty:

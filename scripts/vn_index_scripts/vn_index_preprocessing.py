@@ -1,7 +1,8 @@
 import pandas as pd
+from s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 # Load the data
-df = pd.read_csv('raw_data/vn_index_data/hose_historical_data.csv')
+df = read_csv_from_s3("vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
 
 def remove_outliers(df):
     # Extract percentage from Change column and convert to decimal
@@ -51,7 +52,7 @@ def process_data(df):
     df = df.sort_values('Date')
 
     # Save the cleaned data to a new CSV file
-    df.to_csv('ready_data/vn_index_data/cleaned_vn_index_data.csv', index=False)
+    write_df_to_s3(df, "vn-index", "ready_data/vn_index_data/cleaned_vn_index_data.csv")
     print(df)
 
     print("✅ Data preprocessing completed and saved to 'cleaned_vn_index_data.csv'")
@@ -60,6 +61,6 @@ def process_data(df):
 
 if __name__ == "__main__":
     # Load the data
-    df = pd.read_csv('raw_data/vn_index_data/hose_historical_data.csv')
+    df = read_csv_from_s3("vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
     # df = remove_outliers(df)
     process_data(df)
