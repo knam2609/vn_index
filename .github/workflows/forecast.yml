@@ -30,7 +30,6 @@ jobs:
       - name: 🔁 Run scraping and forecasting
         run: |
           chmod +x render_app/run_scrape.sh
-          # export PYTHONPATH="$GITHUB_WORKSPACE"
           ./render_app/run_scrape.sh
 
       - name: 📤 Commit and push forecast results
