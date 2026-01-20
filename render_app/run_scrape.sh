@@ -1,8 +1,8 @@
 #!/bin/bash
-set -euo pipefail
+# set -euo pipefail
 
-# ensure repo root is on Python path
-export PYTHONPATH="$(pwd)"
+# # ensure repo root is on Python path
+# export PYTHONPATH="$(pwd)"
 
 # Step 1: Scrape the latest VN-Index data
 python -m scripts.vn_index_scripts.scrape_vn_index || echo "Scraping failed"
