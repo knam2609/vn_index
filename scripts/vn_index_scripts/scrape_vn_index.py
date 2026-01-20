@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
+from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 options = Options()
 options.add_argument("--headless=new")  # Required for CI/CD like GitHub Actions
