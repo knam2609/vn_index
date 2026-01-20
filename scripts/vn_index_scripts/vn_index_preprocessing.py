@@ -1,5 +1,5 @@
 import pandas as pd
-from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
+from s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 # Load the data
 df = read_csv_from_s3("vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
