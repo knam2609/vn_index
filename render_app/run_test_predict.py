@@ -59,6 +59,7 @@ def main():
 
     # Model list
     models = ["LSTM", "Transformer", "NeuralProphet"]
+    failed_models = []
 
     for model_name in models:
         print(f"🔄 Running test_predict for {model_name}...")
@@ -91,6 +92,12 @@ def main():
 
         except Exception as e:
             print(f"❌ Failed to run {model_name}: {e}")
+            failed_models.append(model_name)
+
+    if failed_models:
+        raise RuntimeError(
+            f"Model forecasting failed for: {', '.join(failed_models)}"
+        )
 
 if __name__ == "__main__":
     import multiprocessing

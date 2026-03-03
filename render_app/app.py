@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from botocore.exceptions import ClientError
 from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 
 # 🧭 Page setup
@@ -42,23 +43,32 @@ try:
     if final_df.empty or forecast_df.empty or metrics_df.empty:
         st.warning("⚠️ One or more required data files are empty.")
     else:
-        # 📊 Plot actual vs predicted (from test set)
-        st.subheader("📊 Actual vs Predicted VN-Index (Test Set)")
-        fig, ax = plt.subplots()
-        ax.plot(final_df["Date"], final_df["Actual VN-INDEX"], label="Actual")
-        ax.plot(final_df["Date"], final_df["Predicted VN-INDEX"], label="Predicted")
-        ax.set_xlabel("Date")
-        ax.set_ylabel("VN-Index")
-        ax.legend()
+        if "Date" not in final_df.columns:
+            st.error("❌ Missing 'Date' column in final comparison data.")
+        else:
+            final_df["Date"] = pd.to_datetime(final_df["Date"], errors="coerce")
+            final_df = final_df.dropna(subset=["Date"]).sort_values("Date")
 
-        # ✅ Tilt x-axis labels for better readability
-        plt.xticks(rotation=60, ha='right')
-        plt.tight_layout()
+            if final_df.empty:
+                st.warning("⚠️ Final comparison data has no valid dates to plot.")
+            else:
+                # 📊 Plot actual vs predicted (from test set)
+                st.subheader("📊 Actual vs Predicted VN-Index (Test Set)")
+                fig, ax = plt.subplots()
+                ax.plot(final_df["Date"], final_df["Actual VN-INDEX"], label="Actual")
+                ax.plot(final_df["Date"], final_df["Predicted VN-INDEX"], label="Predicted")
+                ax.set_xlabel("Date")
+                ax.set_ylabel("VN-Index")
+                ax.legend()
 
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))
+                # ✅ Tilt x-axis labels for better readability
+                plt.xticks(rotation=60, ha='right')
+                plt.tight_layout()
 
-        st.pyplot(fig)
+                ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+                ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))
+
+                st.pyplot(fig)
 
         # 📋 Metrics
         st.subheader("📌 Model Performance")
@@ -86,5 +96,5 @@ try:
             st.dataframe(recent_forecast, use_container_width=True)
 
 
-except FileNotFoundError:
+except (FileNotFoundError, ClientError):
     st.error(f"❌ Missing forecast, final, or metrics CSV for model: {model_choice}")
