@@ -258,7 +258,7 @@ def get_latest_data(driver=driver):
     return combined_df
 
 
-# get_latest_data(driver)
-get_all_data(driver)
+get_latest_data(driver)
+# get_all_data(driver)
 
 

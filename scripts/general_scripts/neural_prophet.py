@@ -1,9 +1,32 @@
 from neuralprophet import NeuralProphet, set_random_seed, set_log_level
 import pandas as pd
+import torch
+from contextlib import contextmanager
 
 set_random_seed(0)
 # Disable logging messages unless there is an error
 set_log_level("ERROR")
+
+
+@contextmanager
+def torch_load_compat_context():
+    """
+    NeuralProphet/Lightning can restore temporary checkpoints during fit().
+    PyTorch 2.6 changed torch.load default weights_only=True, which breaks
+    those restores for older checkpoint formats. For trusted local checkpoints,
+    force weights_only=False during NeuralProphet training.
+    """
+    original_torch_load = torch.load
+
+    def _torch_load_with_compat(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return original_torch_load(*args, **kwargs)
+
+    torch.load = _torch_load_with_compat
+    try:
+        yield
+    finally:
+        torch.load = original_torch_load
 
 def modify(df, forecast=5):
     # figure out where 'yhat1' lives
@@ -62,12 +85,13 @@ def neural_prophet_model(df, n_lags, n_forecasts):
     val_df   = df.iloc[-n_val:]
 
     # 4) fit using the fixed‐size validation set
-    metrics = m.fit(
-        train_df,
-        freq="B",
-        validation_df=val_df,
-        progress="plot",
-    )
+    with torch_load_compat_context():
+        metrics = m.fit(
+            train_df,
+            freq="B",
+            validation_df=val_df,
+            progress="plot",
+        )
 
     future = m.make_future_dataframe(df, periods=m.n_forecasts, n_historic_predictions=False)
     forecast = m.predict(future, auto_extend=False, raw=False)
