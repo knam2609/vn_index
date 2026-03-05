@@ -20,6 +20,8 @@ import logging
 logging.basicConfig(level=logging.CRITICAL + 1)
 # Force matplotlib backend to avoid plotly attempts
 os.environ["NP_PLOT_BACKEND"] = "matplotlib"
+# PyTorch 2.6+ compatibility for checkpoints loaded by NeuralProphet/Lightning.
+os.environ.setdefault("TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD", "1")
 
 # Suppress stderr where the print happens
 @contextlib.contextmanager

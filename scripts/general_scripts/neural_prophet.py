@@ -1,7 +1,9 @@
 from neuralprophet import NeuralProphet, set_random_seed, set_log_level
+from neuralprophet import configure as neuralprophet_configure
 import pandas as pd
 import torch
 from contextlib import contextmanager
+import inspect
 
 set_random_seed(0)
 # Disable logging messages unless there is an error
@@ -17,16 +19,64 @@ def torch_load_compat_context():
     force weights_only=False during NeuralProphet training.
     """
     original_torch_load = torch.load
+    original_serialization_load = torch.serialization.load
+    cloud_io_module = None
+    original_cloud_io_load = None
+    original_cloud_io_pl_load = None
+    pl_cloud_io_module = None
+    original_pl_cloud_io_load = None
 
     def _torch_load_with_compat(*args, **kwargs):
-        kwargs.setdefault("weights_only", False)
+        # Always force full checkpoint load for trusted local training artifacts.
+        kwargs["weights_only"] = False
         return original_torch_load(*args, **kwargs)
 
+    if hasattr(torch.serialization, "add_safe_globals"):
+        safe_types = [
+            obj
+            for _, obj in inspect.getmembers(neuralprophet_configure)
+            if isinstance(obj, type) and obj.__module__.startswith("neuralprophet")
+        ]
+        if safe_types:
+            torch.serialization.add_safe_globals(safe_types)
+
     torch.load = _torch_load_with_compat
+    torch.serialization.load = _torch_load_with_compat
+
+    # Lightning may keep internal loader aliases; patch them if present.
+    try:
+        import lightning_fabric.utilities.cloud_io as cloud_io
+        cloud_io_module = cloud_io
+        if hasattr(cloud_io_module, "_load"):
+            original_cloud_io_load = cloud_io_module._load
+            cloud_io_module._load = _torch_load_with_compat
+        if hasattr(cloud_io_module, "pl_load"):
+            original_cloud_io_pl_load = cloud_io_module.pl_load
+            cloud_io_module.pl_load = _torch_load_with_compat
+    except Exception:
+        pass
+
+    try:
+        import pytorch_lightning.utilities.cloud_io as pl_cloud_io
+        pl_cloud_io_module = pl_cloud_io
+        if hasattr(pl_cloud_io_module, "load"):
+            original_pl_cloud_io_load = pl_cloud_io_module.load
+            pl_cloud_io_module.load = _torch_load_with_compat
+    except Exception:
+        pass
+
     try:
         yield
     finally:
         torch.load = original_torch_load
+        torch.serialization.load = original_serialization_load
+        if cloud_io_module is not None:
+            if original_cloud_io_load is not None:
+                cloud_io_module._load = original_cloud_io_load
+            if original_cloud_io_pl_load is not None:
+                cloud_io_module.pl_load = original_cloud_io_pl_load
+        if pl_cloud_io_module is not None and original_pl_cloud_io_load is not None:
+            pl_cloud_io_module.load = original_pl_cloud_io_load
 
 def modify(df, forecast=5):
     # figure out where 'yhat1' lives
