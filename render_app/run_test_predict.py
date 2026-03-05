@@ -60,7 +60,7 @@ def main():
     df = read_csv_from_s3("vn-index", data_path)
 
     # Model list
-    models = ["LSTM", "Transformer", "NeuralProphet"]
+    models = ["NeuralProphet"]
     failed_models = []
 
     for model_name in models:
