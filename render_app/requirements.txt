@@ -1,5 +1,6 @@
 streamlit
-pandas
+# Temporary guard until upstream NeuralProphet is pandas 3 compatible.
+pandas>=2.2,<3
 matplotlib
 scikit-learn
 numpy
