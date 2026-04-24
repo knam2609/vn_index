@@ -2,11 +2,28 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 import pandas as pd
 from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
+
+STOCKBIZ_INDICES_STATS_URL = "https://web.stockbiz.vn/IndicesStats.aspx"
+START_DATE_PICKER_ID = "ctl00_webPartManager_wp267165551_wp1192412521_dtStartDate_picker"
+PAGE_WAIT_SECONDS = 20
+HEADER_TRANSLATIONS = {
+    "Ngày": "Date",
+    "Thay đổi": "Change",
+    "Khối lượng GD": "Total Volume",
+    "Giá trị GD": "Total Value",
+    "KL NN mua": "Foreign Buy Volume",
+    "Giá trị NN mua": "Foreign Buy Value",
+    "KL NN bán": "Foreign Sell Volume",
+    "Giá trị NN bán": "Foreign Sell Value",
+}
+VOLUME_COLUMNS = ["Total Volume", "Foreign Buy Volume", "Foreign Sell Volume"]
+VALUE_COLUMNS = ["Total Value", "Foreign Buy Value", "Foreign Sell Value"]
 
 options = Options()
 options.add_argument("--headless=new")  # Required for CI/CD like GitHub Actions
@@ -18,15 +35,97 @@ options.add_argument("--disable-infobars")
 options.add_argument("--window-size=1920,1080")
 
 driver = webdriver.Chrome(options=options)
-driver.get("http://en.stockbiz.vn/IndicesStats.aspx#")
+driver.get(STOCKBIZ_INDICES_STATS_URL)
 
 # Wait for the page to load
 driver.implicitly_wait(10)
 
 # Wait for the calendar widget to be fully initialized
-WebDriverWait(driver, 10).until(
-    EC.presence_of_element_located((By.ID, "ctl00_webPartManager_wp267165551_wp1192412521_dtStartDate_picker"))
+try:
+    WebDriverWait(driver, PAGE_WAIT_SECONDS).until(
+        EC.presence_of_element_located((By.ID, START_DATE_PICKER_ID))
     )
+except TimeoutException:
+    print(f"Timed out waiting for Stockbiz start-date picker: {START_DATE_PICKER_ID}")
+    print(f"Current URL: {driver.current_url}")
+    print(f"Page title: {driver.title}")
+    print(f"Page source preview: {driver.page_source[:1000]}")
+    driver.quit()
+    raise
+
+
+def normalize_headers(headers):
+    return [HEADER_TRANSLATIONS.get(header, header) for header in headers]
+
+
+def normalize_vietnamese_date(value):
+    try:
+        return datetime.strptime(value, "%d/%m/%Y").strftime("%m/%d/%Y")
+    except ValueError:
+        return value
+
+
+def normalize_vietnamese_decimal(value):
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    if "," in text and "." in text and text.rfind(",") > text.rfind("."):
+        return text.replace(".", "").replace(",", ".")
+    if "," in text and "." not in text:
+        return text.replace(",", ".")
+    return text
+
+
+def normalize_vietnamese_integer(value):
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    if "." in text and "," not in text and text.replace(".", "").isdigit():
+        return f"{int(text.replace('.', '')):,}"
+    return text
+
+
+def normalize_vietnamese_money(value):
+    if not isinstance(value, str):
+        return value
+
+    text = value.strip()
+    unit = None
+    if "tỷ" in text:
+        unit = "bil"
+        text = text.replace("tỷ", "")
+    elif "triệu" in text:
+        unit = "mil"
+        text = text.replace("triệu", "")
+
+    if unit is None:
+        return value
+
+    number_text = normalize_vietnamese_decimal(text.strip())
+    try:
+        return f"{float(number_text):,.2f} {unit}"
+    except ValueError:
+        return value
+
+
+def normalize_scraped_dataframe(df):
+    if "Date" in df.columns:
+        df["Date"] = df["Date"].apply(normalize_vietnamese_date)
+    if "VN-INDEX" in df.columns:
+        df["VN-INDEX"] = df["VN-INDEX"].apply(normalize_vietnamese_decimal)
+    if "Change" in df.columns:
+        df["Change"] = df["Change"].apply(normalize_vietnamese_decimal)
+
+    for col in VOLUME_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].apply(normalize_vietnamese_integer)
+    for col in VALUE_COLUMNS:
+        if col in df.columns:
+            df[col] = df[col].apply(normalize_vietnamese_money)
+
+    return df
 
 
 # Function to scrape data from the current page
@@ -40,8 +139,7 @@ def scrape_current_page(is_first_page, driver):
     # Extract data into a list
     data = []
     for i, row in enumerate(rows):
-        # Skip the footer row (last row)
-        if i == len(rows) - 1:
+        if "TableFooter" in (row.get_attribute("class") or ""):
             continue
 
         # Skip the title row (first row) for pages 2 and beyond
@@ -49,8 +147,12 @@ def scrape_current_page(is_first_page, driver):
             continue
 
         # Extract columns
-        cols = row.find_elements(By.TAG_NAME, "td")
-        cols = [col.text.strip() for col in cols[:-1]]
+        cols = row.find_elements(By.TAG_NAME, "th") or row.find_elements(By.TAG_NAME, "td")
+        cols = [col.text.strip() for col in cols]
+        if cols and cols[-1] == "":
+            cols = cols[:-1]
+        if i == 0:
+            cols = normalize_headers(cols)
         data.append(cols)
 
     return data
@@ -212,6 +314,7 @@ def get_all_data(driver=driver):
 
     # Convert the data into a pandas DataFrame
     df = pd.DataFrame(all_data, columns=title_row)  # Use the title row as column headers
+    df = normalize_scraped_dataframe(df)
 
     # Save the data to a CSV file
     write_df_to_s3(df, "vn-index", "raw_data/vn_index_data/hose_historical_data.csv")
@@ -233,6 +336,7 @@ def get_latest_data(driver=driver):
     # Extract header and data
     title_row = first_page_data[0]
     first_page_df = pd.DataFrame(first_page_data[1:], columns=title_row)
+    first_page_df = normalize_scraped_dataframe(first_page_df)
 
     # Combine the new and existing data
     combined_df = pd.concat([first_page_df, df], ignore_index=True)
@@ -260,5 +364,3 @@ def get_latest_data(driver=driver):
 
 get_latest_data(driver)
 # get_all_data(driver)
-
-
