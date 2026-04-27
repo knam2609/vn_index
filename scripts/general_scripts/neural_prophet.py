@@ -284,6 +284,8 @@ def neural_prophet_model(df, n_lags, n_forecasts):
 
     # convert the 'ds' column to datetime
     df['ds'] = pd.to_datetime(df['ds'])
+    df = df.dropna(subset=['ds', 'y']).sort_values('ds')
+    df = df.drop_duplicates(subset=['ds'], keep='last').reset_index(drop=True)
 
     # 2) compute how many rows you need for validation
     n_val = m.n_lags + m.n_forecasts  # must equal 60 + 10 = 70

@@ -67,3 +67,28 @@ def test_process_data_refuses_to_write_empty_cleaned_data(monkeypatch):
 
     with pytest.raises(ValueError, match="No valid VN-Index rows remain"):
         vn_index_preprocessing.process_data(raw_df)
+
+
+def test_process_data_removes_duplicate_parsed_dates(monkeypatch):
+    written = {}
+
+    def fake_write_df_to_s3(df, bucket, key, **kwargs):
+        written["df"] = df.copy()
+
+    monkeypatch.setattr(vn_index_preprocessing, "write_df_to_s3", fake_write_df_to_s3)
+
+    raw_df = pd.DataFrame(
+        {
+            "Date": ["04/09/2026", "4/9/2026", "04/10/2026"],
+            "VN-INDEX": ["1,736.68", "1,700.00", "1,750.00"],
+            "Total Volume": ["123,456", "999,999", "130,000"],
+            "Total Value": ["1.50 bil", "9.99 bil", "1.75 bil"],
+        }
+    )
+
+    cleaned_df = vn_index_preprocessing.process_data(raw_df)
+
+    assert len(cleaned_df) == 2
+    assert not cleaned_df["Date"].duplicated().any()
+    assert cleaned_df["VN_Index_Close"].tolist() == [1736.68, 1750.0]
+    pd.testing.assert_frame_equal(cleaned_df, written["df"])

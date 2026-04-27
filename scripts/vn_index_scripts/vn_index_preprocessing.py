@@ -60,6 +60,7 @@ def process_data(df):
 
     df.rename(columns={'VN-INDEX': 'VN_Index_Close'}, inplace=True)
     df.dropna(subset=OUTPUT_COLUMNS, inplace=True)
+    df.drop_duplicates(subset=["Date"], keep="first", inplace=True)
 
     if df.empty:
         raise ValueError(
@@ -67,7 +68,7 @@ def process_data(df):
             "refusing to overwrite cleaned_vn_index_data.csv"
         )
 
-    df = df.sort_values('Date')
+    df = df.sort_values('Date').reset_index(drop=True)
 
     # Save the cleaned data to a new CSV file
     write_df_to_s3(df, BUCKET, CLEANED_KEY)
