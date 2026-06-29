@@ -1,0 +1,44 @@
+name: Activity Heartbeat
+
+on:
+  schedule:
+    # Runs monthly to keep scheduled workflows active before GitHub's 60-day inactivity window.
+    - cron: "17 3 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: activity-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update heartbeat timestamp
+        run: |
+          set -euo pipefail
+          mkdir -p .github
+          printf "Last activity heartbeat: %s\n" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > .github/activity-heartbeat.txt
+
+      - name: Commit and push heartbeat
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/activity-heartbeat.txt
+          if git diff --cached --quiet; then
+            echo "Heartbeat timestamp is already current"
+            exit 0
+          fi
+          git commit -m "chore: update activity heartbeat [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
