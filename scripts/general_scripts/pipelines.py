@@ -167,7 +167,10 @@ def price_model(data, scaler=StandardScaler(), model_type=LSTMModelMultiStep, cr
 
     trend = data['trend']
     trend_last = trend.iloc[-test_seq_len:]
-    trend_model = Holt(trend.iloc[:-test_seq_len]).fit()
+    # statsmodels 0.15 rejects Holt's default None; keep the legacy initialization.
+    trend_model = Holt(
+        trend.iloc[:-test_seq_len], initialization_method="legacy-heuristic"
+    ).fit()
     trend_next  = trend_model.forecast(test_seq_len)
     if verbose:
         print(trend_next)

@@ -191,3 +191,37 @@ def test_legacy_test_predict_returns_existing_tuple(monkeypatch):
     assert seen["config"].n_lags == 2
     assert seen["scaler"] is scaler
     assert seen["criterion"] is criterion
+
+
+@pytest.mark.parametrize("model_name", ["LSTM", "Transformer"])
+def test_torch_daily_forecast_produces_finite_artifacts(model_name, monkeypatch):
+    """Exercise real Holt fits in both backtesting and future predictions."""
+    from torch.utils.data import DataLoader
+    from scripts.general_scripts import training_evaluation
+
+    def single_process_loader(*args, **kwargs):
+        kwargs["num_workers"] = 0
+        return DataLoader(*args, **kwargs)
+
+    # Keep the small regression run independent of multiprocessing startup.
+    monkeypatch.setattr(training_evaluation, "DataLoader", single_process_loader)
+    df = make_vn_index_df(rows=40)
+    df["VN_Index_Close"] = df["VN_Index_Close"] + 0.25 * np.sin(np.arange(40))
+    config = DailyForecastConfig(
+        n_tests=2,
+        n_forecasts=2,
+        seasonal_periods=5,
+        n_lags=5,
+        epochs=1,
+    )
+
+    artifacts = run_daily_forecast(df, model_name, config=config)
+
+    assert artifacts.final_df.shape == (2, 4)
+    assert artifacts.metrics_df["Model"].tolist() == ["ExponentialSmoothing", model_name]
+    assert artifacts.forecast_df.shape == (2, 2)
+    for frame in (artifacts.final_df, artifacts.metrics_df, artifacts.forecast_df):
+        assert np.isfinite(frame.select_dtypes(include="number").to_numpy()).all()
+    assert artifacts.forecast_df["Date"].tolist() == pd.bdate_range(
+        df["Date"].iloc[-1] + pd.offsets.BDay(1), periods=2
+    ).tolist()
