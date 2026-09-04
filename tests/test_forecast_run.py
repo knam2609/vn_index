@@ -195,7 +195,7 @@ def test_legacy_test_predict_returns_existing_tuple(monkeypatch):
 
 @pytest.mark.parametrize("model_name", ["LSTM", "Transformer"])
 def test_torch_daily_forecast_produces_finite_artifacts(model_name, monkeypatch):
-    """Exercise real Holt fits in both backtesting and future predictions."""
+    """Exercise real Holt fits against an irregular trading-day index."""
     from torch.utils.data import DataLoader
     from scripts.general_scripts import training_evaluation
 
@@ -207,6 +207,7 @@ def test_torch_daily_forecast_produces_finite_artifacts(model_name, monkeypatch)
     monkeypatch.setattr(training_evaluation, "DataLoader", single_process_loader)
     df = make_vn_index_df(rows=40)
     df["VN_Index_Close"] = df["VN_Index_Close"] + 0.25 * np.sin(np.arange(40))
+    df = df.drop(index=20).reset_index(drop=True)
     config = DailyForecastConfig(
         n_tests=2,
         n_forecasts=2,

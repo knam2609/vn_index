@@ -116,8 +116,10 @@ def future_price_prediction(X_test, data, y_pred, scaler, model, num_days=10, se
         print(seasonal_next)
     
     trend = data['trend']
-    # Match the backtest initialization without relying on Holt's None default.
-    trend_model = Holt(trend, initialization_method="legacy-heuristic").fit()
+    # Match the positional backtest fit for an irregular trading-day index.
+    trend_model = Holt(
+        trend.reset_index(drop=True), initialization_method="legacy-heuristic"
+    ).fit()
     trend_last = trend.iloc[-num_days:]    
     trend_next  = trend_model.forecast(num_days)
     if verbose:
