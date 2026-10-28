@@ -12,6 +12,10 @@ from scripts.s3_scripts.read_write_to_s3 import read_csv_from_s3, write_df_to_s3
 STOCKBIZ_INDICES_STATS_URL = "https://web.stockbiz.vn/IndicesStats.aspx"
 START_DATE_PICKER_ID = "ctl00_webPartManager_wp267165551_wp1192412521_dtStartDate_picker"
 PAGE_WAIT_SECONDS = 20
+# Must stay below Selenium's 120s HTTP read timeout to chromedriver, otherwise a
+# slow page surfaces as an unrecoverable urllib3 ReadTimeoutError.
+PAGE_LOAD_TIMEOUT_SECONDS = 60
+PAGE_LOAD_ATTEMPTS = 3
 HEADER_TRANSLATIONS = {
     "Ngày": "Date",
     "Thay đổi": "Change",
@@ -33,25 +37,41 @@ options.add_argument("--disable-gpu")
 options.add_argument("--disable-extensions")
 options.add_argument("--disable-infobars")
 options.add_argument("--window-size=1920,1080")
+# The data table is server-rendered; don't block on ads/analytics/push scripts
+options.page_load_strategy = "eager"
+
+
+def open_indices_stats_page(driver):
+    for attempt in range(1, PAGE_LOAD_ATTEMPTS + 1):
+        try:
+            driver.get(STOCKBIZ_INDICES_STATS_URL)
+        except TimeoutException:
+            print(f"Stockbiz page load timed out after {PAGE_LOAD_TIMEOUT_SECONDS}s (attempt {attempt}/{PAGE_LOAD_ATTEMPTS})")
+            driver.execute_script("window.stop();")
+
+        # Wait for the calendar widget to be fully initialized
+        try:
+            WebDriverWait(driver, PAGE_WAIT_SECONDS).until(
+                EC.presence_of_element_located((By.ID, START_DATE_PICKER_ID))
+            )
+            return
+        except TimeoutException:
+            print(f"Timed out waiting for Stockbiz start-date picker: {START_DATE_PICKER_ID} (attempt {attempt}/{PAGE_LOAD_ATTEMPTS})")
+            print(f"Current URL: {driver.current_url}")
+            print(f"Page title: {driver.title}")
+            print(f"Page source preview: {driver.page_source[:1000]}")
+
+    driver.quit()
+    raise TimeoutException(f"Could not load Stockbiz page after {PAGE_LOAD_ATTEMPTS} attempts")
+
 
 driver = webdriver.Chrome(options=options)
-driver.get(STOCKBIZ_INDICES_STATS_URL)
+driver.set_page_load_timeout(PAGE_LOAD_TIMEOUT_SECONDS)
 
 # Wait for the page to load
 driver.implicitly_wait(10)
 
-# Wait for the calendar widget to be fully initialized
-try:
-    WebDriverWait(driver, PAGE_WAIT_SECONDS).until(
-        EC.presence_of_element_located((By.ID, START_DATE_PICKER_ID))
-    )
-except TimeoutException:
-    print(f"Timed out waiting for Stockbiz start-date picker: {START_DATE_PICKER_ID}")
-    print(f"Current URL: {driver.current_url}")
-    print(f"Page title: {driver.title}")
-    print(f"Page source preview: {driver.page_source[:1000]}")
-    driver.quit()
-    raise
+open_indices_stats_page(driver)
 
 
 def normalize_headers(headers):
@@ -146,8 +166,8 @@ def scrape_current_page(is_first_page, driver):
         if not is_first_page and i == 0:
             continue
 
-        # Extract columns
-        cols = row.find_elements(By.TAG_NAME, "th") or row.find_elements(By.TAG_NAME, "td")
+        # Extract columns (one lookup, so the implicit wait isn't spent on a missing tag)
+        cols = row.find_elements(By.CSS_SELECTOR, "th, td")
         cols = [col.text.strip() for col in cols]
         if cols and cols[-1] == "":
             cols = cols[:-1]
